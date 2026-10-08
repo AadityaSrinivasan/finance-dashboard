@@ -1,0 +1,8 @@
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+plaid-python==45.0.0
+python-dotenv==1.2.4
+pdfplumber==0.11.10
+cryptography==50.0.2
+keyring==25.7.0
+python-multipart==0.0.32

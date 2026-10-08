@@ -1,0 +1,67 @@
+# ============================================================
+# NEVER upload: secrets, your financial data, and documents
+# ============================================================
+
+# Secrets (Plaid client ID / secrets)
+.env
+.env.*
+!.env.example
+
+# Databases: ALL your financial data and encrypted Plaid access tokens,
+# plus the daily backups in data/backups/
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Pay stubs and any other PDFs (pay stubs, statements, tax forms)
+pay_stub_year_to_date/
+*.pdf
+
+# Bank / brokerage exports
+csv_imports/
+*.csv
+*.xlsx
+*.xls
+*.ofx
+*.qfx
+*.qbo
+
+# Token encryption key backups (scripts/backup_key.py) and anything secret-looking
+*key*.txt
+*.key
+*.pem
+*.p12
+*.secret
+secrets/
+*token*
+certs/
+
+# ============================================================
+# Not needed in the repo
+# ============================================================
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# Editors / OS clutter
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude local overrides
+.claude/settings.local.json

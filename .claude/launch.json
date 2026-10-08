@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "finance-dashboard",
+      "runtimeExecutable": ".venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8765"],
+      "port": 8765,
+      "url": "http://127.0.0.1:8765"
+    },
+    {
+      "name": "finance-dashboard-test",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set APP_PORT=8766&& .venv\\Scripts\\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8766 --reload --reload-dir app"],
+      "port": 8766,
+      "url": "http://127.0.0.1:8766"
+    }
+  ]
+}

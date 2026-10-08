@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Finance Dashboard</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/vendor/plotly.min.js"></script>
+  <!-- Plaid Link must be loaded from Plaid's CDN (it cannot be self-hosted). -->
+  <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+</head>
+<body>
+<header>
+  <h1>Finance Dashboard</h1>
+  <nav id="nav">
+    <button data-view="overview" class="active">Net worth</button>
+    <button data-view="cashflow">Cash flow</button>
+    <button data-view="spending">Spending</button>
+    <button data-view="income">Income &amp; pay stubs</button>
+    <button data-view="investments">Investments</button>
+    <button data-view="future">Future</button>
+    <button data-view="transactions">Transactions</button>
+    <button data-view="recurring">Recurring</button>
+    <button data-view="rules">Rules</button>
+    <button data-view="connections">Accounts &amp; data</button>
+  </nav>
+  <div class="header-right">
+    <span id="last-sync" class="muted small"></span>
+    <button class="btn primary" id="sync-btn">Sync now</button>
+    <span id="env-badge" class="env"></span>
+  </div>
+</header>
+
+<main>
+  <div id="global-alerts"></div>
+
+  <!-- NET WORTH -->
+  <section class="view active" id="view-overview">
+    <h2>Where your money is</h2>
+    <p class="sub">Current balances from every account. Credit cards count as debts.</p>
+    <div class="kpis" id="nw-kpis"></div>
+    <div class="row">
+      <div class="card" style="flex: 2 1 560px"><h3>Accounts</h3><div class="table-wrap" id="nw-accounts"></div></div>
+      <div class="card" style="flex: 1 1 340px"><h3>Net worth over time</h3><div id="nw-chart" class="chart"></div>
+        <p class="small muted">A snapshot is saved each day the data syncs.</p></div>
+    </div>
+    <div class="card" id="cc-card">
+      <h3>Next 30 days in checking</h3>
+      <p class="small muted" style="margin-top:-4px">Paychecks, card statements, recurring bills and your planned payments, day by day. Money friends pay you back isn't counted, so this leans cautious.</p>
+      <div class="form" style="margin-bottom:12px">
+        <label>What if I move this out of checking today ($)<input type="number" id="cc-whatif" value="0" step="100" inputmode="decimal" style="width:140px"></label>
+        <label>Keep at least this much in checking ($)<input type="number" id="cc-buffer" value="1000" step="100" inputmode="decimal" style="width:140px"></label>
+      </div>
+      <div id="cc-alerts"></div>
+      <div class="kpis" id="cc-kpis"></div>
+      <div id="cc-chart" class="chart"></div>
+      <div class="table-wrap" id="cc-table"></div>
+      <details style="margin-top:12px"><summary class="btn">Planned payments (rent, etc.)</summary>
+        <div id="cc-planned" style="margin-top:10px"></div>
+        <div class="form" style="margin-top:10px">
+          <label>Name<input id="cc-p-name" placeholder="Rent" size="14"></label>
+          <label>Amount ($)<input id="cc-p-amount" type="number" step="0.01" inputmode="decimal" style="width:110px"></label>
+          <label>Money<select id="cc-p-dir"><option value="out">going out</option><option value="in">coming in</option></select></label>
+          <label>Date<input id="cc-p-date" type="date"></label>
+          <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="cc-p-repeat" checked> every month</label>
+          <button class="btn primary" id="cc-p-add">Add</button>
+        </div>
+      </details>
+    </div>
+    <div class="card"><h3>Month by month</h3><div id="monthly-chart" class="chart"></div>
+      <p class="small muted" id="monthly-note"></p></div>
+  </section>
+
+  <!-- CASH FLOW -->
+  <section class="view" id="view-cashflow">
+    <h2>Where your money goes</h2>
+    <p class="sub">From gross pay to what's left. Transfers between your own accounts and credit card payments are excluded.</p>
+    <div class="toolbar"><select id="cf-period" class="period-select"></select></div>
+    <div id="cf-notes"></div>
+    <div class="kpis" id="cf-kpis"></div>
+    <div class="card"><h3>Cash flow</h3><div id="cf-sankey" class="chart tall"></div></div>
+    <div class="row">
+      <div class="card"><h3>Investment rate</h3><div class="table-wrap" id="cf-invest"></div></div>
+      <div class="card"><h3>Spending as % of take-home pay</h3><div class="table-wrap" id="cf-spend-pct"></div></div>
+    </div>
+    <div class="card"><h3>Paycheck breakdown</h3><div class="table-wrap" id="cf-payroll"></div></div>
+  </section>
+
+  <!-- SPENDING -->
+  <section class="view" id="view-spending">
+    <h2>Spending by category</h2>
+    <p class="sub">Click a category to see every transaction in it.</p>
+    <div class="toolbar"><select id="sp-period" class="period-select"></select><span id="sp-total" class="muted"></span></div>
+    <div class="row">
+      <div class="card"><h3>Categories</h3><div class="table-wrap" id="sp-table"></div></div>
+      <div class="card"><h3>By account</h3><div id="sp-account-chart" class="chart"></div></div>
+    </div>
+    <div class="card"><h3>Last 12 months by category</h3><div id="sp-trend" class="chart"></div></div>
+  </section>
+
+  <!-- INCOME -->
+  <section class="view" id="view-income">
+    <h2>Money coming in</h2>
+    <p class="sub">Paychecks detected in your bank deposits, plus your pay stubs.</p>
+    <div class="row">
+      <div class="card"><h3>Paychecks by month</h3><div id="inc-chart" class="chart"></div><div id="inc-note" class="small muted"></div></div>
+      <div class="card"><h3>Monthly detail</h3><div class="table-wrap" id="inc-table"></div></div>
+    </div>
+    <div class="card">
+      <div class="toolbar" style="justify-content: space-between">
+        <h3 style="margin:0">Pay stubs</h3>
+        <div><button class="btn" id="stub-import">Import new pay stubs</button>
+          <button class="btn small" id="stub-reparse" title="Re-read all PDFs (discards your manual edits)">Re-read all</button></div>
+      </div>
+      <p class="small muted">Drop new PDFs into the <code>pay_stub_year_to_date</code> folder, then click "Import new pay stubs".</p>
+      <div class="table-wrap" id="stub-list"></div>
+    </div>
+  </section>
+
+  <!-- INVESTMENTS -->
+  <section class="view" id="view-investments">
+    <h2>Investments</h2>
+    <p class="sub">Holdings across your brokerage, retirement and other investment accounts.</p>
+    <div class="kpis" id="inv-kpis"></div>
+    <div class="row">
+      <div class="card"><h3>By account</h3><div id="inv-account" class="chart"></div></div>
+      <div class="card"><h3>By type</h3><div id="inv-type" class="chart"></div></div>
+    </div>
+    <div class="card"><h3>By holding</h3><div id="inv-holding" class="chart"></div></div>
+    <div class="card"><h3>Holdings</h3><div class="table-wrap" id="inv-table"></div></div>
+  </section>
+
+  <!-- FUTURE -->
+  <section class="view" id="view-future">
+    <h2>Future</h2>
+    <p class="sub">How your money could grow. It starts from your real balances, pay and spending; change anything to try a scenario.</p>
+    <div class="toolbar">
+      <label>Scenario<select id="fu-scenario"></select></label>
+      <button class="btn" id="fu-save">Save scenario…</button>
+      <button class="btn danger" id="fu-delete" hidden>Delete</button>
+      <button class="btn" id="fu-reset">Reset to current habits</button>
+      <span id="fu-status" class="muted small"></span>
+    </div>
+    <div id="fu-warnings"></div>
+    <div class="kpis" id="fu-kpis"></div>
+    <div class="fu-grid">
+      <div class="fu-results">
+        <div class="card">
+          <div class="toolbar" style="justify-content:space-between;margin-bottom:6px">
+            <h3 style="margin:0" id="fu-chart-title">Projected net worth</h3>
+            <div class="seg" id="fu-chart-mode"><button data-mode="stacked" class="on">Stacked</button><button data-mode="lines">Lines</button></div>
+          </div>
+          <div id="fu-chart" class="chart tall"></div>
+          <p class="small muted">Projections are estimates. Investment returns are not guaranteed and will vary year to year.</p>
+        </div>
+        <div class="card"><h3>My current habits vs. my adjusted scenario</h3><div class="table-wrap" id="fu-compare"></div></div>
+        <div class="card"><h3>Each bucket at the end</h3><div class="fu-bucket-cards" id="fu-bucket-cards"></div></div>
+        <div class="card">
+          <div class="toolbar" style="justify-content:space-between"><h3 style="margin:0">Year by year</h3>
+            <select id="fu-year-bucket"></select></div>
+          <div class="table-wrap" id="fu-table"></div>
+        </div>
+      </div>
+      <div class="fu-controls">
+        <div class="card"><h3>Big picture</h3><div id="fu-global"></div></div>
+        <div class="card"><h3>Pay &amp; spending</h3><div id="fu-income"></div></div>
+        <div class="card"><h3>Buckets</h3><div id="fu-buckets"></div>
+          <details class="fu-add"><summary class="btn">+ Add a bucket</summary><div id="fu-add-form"></div></details></div>
+        <div class="card"><h3>One-time lump sums (today)</h3><div id="fu-lumps"></div>
+          <button class="btn" id="fu-add-lump">+ Add a lump sum</button></div>
+        <div class="card"><h3>Where the starting numbers come from</h3><div id="fu-sources" class="small"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRANSACTIONS -->
+  <section class="view" id="view-transactions">
+    <h2>Transactions</h2>
+    <p class="sub">Change any category. Use "Transfer" for money moved between your own accounts.</p>
+    <div class="toolbar">
+      <select id="tx-period" class="period-select"><option value="">All time</option></select>
+      <select id="tx-account"><option value="">All accounts</option></select>
+      <select id="tx-category"><option value="">All categories</option></select>
+      <input id="tx-search" placeholder="Search…" size="18">
+      <label style="flex-direction: row; align-items: center; gap: 5px"><input type="checkbox" id="tx-review"> Needs review only</label>
+      <span id="tx-count" class="muted small"></span>
+    </div>
+    <div class="card table-wrap" id="tx-table"></div>
+  </section>
+
+  <!-- RECURRING -->
+  <section class="view" id="view-recurring">
+    <h2>Recurring charges &amp; subscriptions</h2>
+    <p class="sub">Detected from repeating payments to the same merchant at a regular interval.</p>
+    <div class="kpis" id="rec-kpis"></div>
+    <div class="card table-wrap" id="rec-table"></div>
+  </section>
+
+  <!-- RULES -->
+  <section class="view" id="view-rules">
+    <h2>Category rules</h2>
+    <p class="sub">Rules run on top of Plaid's categories, lowest priority number first. Your manual choice on a single transaction always wins.</p>
+    <div class="card">
+      <h3 id="rule-form-title">Add a rule</h3>
+      <form id="rule-form" class="form">
+        <input type="hidden" name="id">
+        <label>Name<input name="name" required size="18"></label>
+        <label>Text to match (separate with |)<input name="pattern" required size="24" placeholder="spotify|hulu"></label>
+        <label>Match<select name="match_type"><option value="word">whole word</option><option value="contains">contains</option><option value="regex">regex</option></select></label>
+        <label>Category<select name="category" class="cat-options"></select></label>
+        <label>Account<select name="account_id" class="acct-options"><option value="">Any</option></select></label>
+        <label>Direction<select name="direction"><option value="">Any</option><option value="out">Money out</option><option value="in">Money in</option></select></label>
+        <label>Min $<input name="amount_min" type="number" step="0.01" style="width:90px"></label>
+        <label>Max $<input name="amount_max" type="number" step="0.01" style="width:90px"></label>
+        <label>Day of month from<input name="day_min" type="number" min="1" max="31" style="width:70px"></label>
+        <label>to<input name="day_max" type="number" min="1" max="31" style="width:70px"></label>
+        <label>Priority<input name="priority" type="number" value="50" style="width:70px"></label>
+        <button type="button" class="btn" id="rule-test">Preview matches</button>
+        <button class="btn primary" type="submit">Save rule</button>
+        <button type="button" class="btn" id="rule-cancel" hidden>Cancel edit</button>
+      </form>
+      <div id="rule-test-result" class="small" style="margin-top:10px"></div>
+    </div>
+    <div class="card table-wrap" id="rules-table"></div>
+  </section>
+
+  <!-- CONNECTIONS -->
+  <section class="view" id="view-connections">
+    <h2>Accounts &amp; data</h2>
+    <p class="sub">Bank connections, manual accounts, CSV import and settings.</p>
+    <div id="conn-env"></div>
+    <div class="card">
+      <div class="toolbar" style="justify-content: space-between">
+        <h3 style="margin:0">Bank connections (Plaid)</h3>
+        <div class="toolbar" style="margin:0">
+          <button class="btn" id="demo-btn" hidden>Load Sandbox demo data</button>
+          <button class="btn primary" id="connect-btn">Add a bank account</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="conn-items"></div>
+    </div>
+    <div class="card"><h3>Production Item log</h3>
+      <p class="small muted">Every Production Item ever created. On the Trial plan, removing an Item does not free its slot.</p>
+      <div class="table-wrap" id="prod-log"></div></div>
+    <div class="row">
+      <div class="card"><h3>Add a manual account</h3>
+        <p class="small muted">For accounts without a Plaid connection (for example a stock purchase plan). Update the balance by hand.</p>
+        <form id="manual-form" class="form">
+          <label>Name<input name="name" required placeholder="Stock purchase plan"></label>
+          <label>Institution<input name="institution" placeholder="Broker name"></label>
+          <label>Type<select name="type"><option value="investment">Investment</option><option value="depository">Cash / bank</option><option value="credit">Credit card</option><option value="loan">Loan</option><option value="other">Other asset</option></select></label>
+          <label>Balance<input name="balance" type="number" step="0.01" value="0" style="width:120px"></label>
+          <button class="btn primary">Add</button>
+        </form>
+        <div class="table-wrap" id="manual-list" style="margin-top:12px"></div>
+      </div>
+      <div class="card"><h3>Import a CSV (fallback)</h3>
+        <p class="small muted">Use when a connection is broken. Works with exports from many banks, card issuers and brokerages. Duplicates of Plaid data are skipped.</p>
+        <div class="form"><input type="file" id="csv-file" accept=".csv,text/csv"><button class="btn" id="csv-preview-btn">Preview</button></div>
+        <div class="table-wrap" id="csv-result" style="margin-top:12px"></div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="card"><h3>Settings</h3>
+        <p class="small muted">What counts toward your investment rate (besides your 401(k) and money moved to your brokerage):</p>
+        <div id="settings-form"></div></div>
+      <div class="card"><h3>Accounts</h3>
+        <p class="small muted">Rename accounts or hide ones you don't want counted.</p>
+        <div class="table-wrap" id="acct-settings"></div></div>
+    </div>
+    <div class="card"><h3>Check the numbers</h3>
+      <p class="small muted">Compare these with your bank apps.</p>
+      <button class="btn" id="verify-btn">Run checks</button><div class="table-wrap" id="verify-out" style="margin-top:12px"></div></div>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <div class="dlg-head"><h3 id="dlg-title"></h3><button class="btn small" id="dlg-close">Close</button></div>
+  <div class="dlg-body" id="dlg-body"></div>
+  <div class="dlg-foot" id="dlg-foot"></div>
+</dialog>
+<div id="toast"></div>
+<script src="/static/app.js"></script>
+<script src="/static/future.js"></script>
+<script src="/static/cashcal.js"></script>
+</body>
+</html>
